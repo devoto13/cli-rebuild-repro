@@ -1,27 +1,27 @@
-# SourceErrro
+# Reproduction steps
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 1.6.5.
+1. `npm install`
+2. Copy everything from `failing-libs` directory into `node_modules` directory:
 
-## Development server
+        $ cp -R failing-libs/* node_modules/
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.
+3. `./node_modules/.bin/ng serve --aot`
+4. Open `app.component.ts` and change `'app'` to `'lib'` (or do any other change).
 
-## Code scaffolding
+Observe below error in terminal:
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+```
+ERROR in Error: Debug Failure. False expression: Host should not return a redirect source file from `getSourceFile`
+    at tryReuseStructureFromOldProgram (/Users/devoto13/Projects/trash/source-errro/node_modules/typescript/lib/typescript.js:72296:26)
+    at Object.createProgram (/Users/devoto13/Projects/trash/source-errro/node_modules/typescript/lib/typescript.js:72004:34)
+    at AngularCompilerProgram._createProgramWithBasicStubs (/Users/devoto13/Projects/trash/source-errro/node_modules/@angular/compiler-cli/src/transformers/program.js:435:29)
+    at /Users/devoto13/Projects/trash/source-errro/node_modules/@angular/compiler-cli/src/transformers/program.js:143:28
+    at <anonymous>
+    at process._tickCallback (internal/process/next_tick.js:188:7)
+```
 
-## Build
+### More info
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory. Use the `-prod` flag for a production build.
+TypeScript 2.5 introduced optimization, where compiler won't load identical libraries multiple times, but instead will load once and replace duplicates with redirect source file. See https://github.com/Microsoft/TypeScript/pull/16274 for more details. The reproduction forces this behavior by adding two fake libs with identical d.ts files.
 
-## Running unit tests
-
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
-
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via [Protractor](http://www.protractortest.org/).
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI README](https://github.com/angular/angular-cli/blob/master/README.md).
+In real life this mostly happens, when some dependency was not de-duplicated. For example `npm link`-ing a library, which depends on `rxjs` will trigger this error, because there will be two identical instances of `rxjs`, one used directly by application and another one by a sym-linked library.
